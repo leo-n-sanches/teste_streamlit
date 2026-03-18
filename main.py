@@ -1,15 +1,35 @@
 import streamlit as st
 import pandas as pd
 
+def calc_general_stats(df:pd.DataFrame):
+    df_data = df.groupby(by="Data")[["Valor"]].sum()
+    df_data["lag_1"] = df_data["Valor"].shift(1)
+    df_data["diferença_mensal"] = df_data["Valor"] - df_data["lag_1"]
+    df_data["media_6m_diferenca_mensal_absoluta"] = df_data["diferença_mensal"].rolling(6).mean()
+    df_data["media_12m_diferenca_mensal_absoluta"] = df_data["diferença_mensal"].rolling(12).mean()
+    df_data["media_24m_diferenca_mensal_absoluta"] = df_data["diferença_mensal"].rolling(24).mean()
+    
+    df_data["diferenca mensal relativa"] = df_data["Valor"] / df_data["lag_1"] - 1
+
+    df_data["evolucao_6m_total"] = df_data["Valor"].rolling(6).apply(lambda x: x[-1] - x[0])
+    df_data["evolucao_12m_total"] = df_data["Valor"].rolling(12).apply(lambda x: x[-1] - x[0])
+    df_data["evolucao_24m_total"] = df_data["Valor"].rolling(24).apply(lambda x: x[-1] - x[0])
+
+    df_data["evolucao_6m_relativa"] = df_data["Valor"].rolling(6).apply(lambda x: x[-1] / x[0] - 1)
+    df_data["evolucao_12m_relativa"] = df_data["Valor"].rolling(12).apply(lambda x: x[-1] / x[0] - 1)
+    df_data["evolucao_24m_relativa"] = df_data["Valor"].rolling(24).apply(lambda x: x[-1] / x[0] - 1)
+
+    df_data = df_data.drop("lag_1", axis=1)
+
+    return df_data
 
 st.set_page_config(page_title="Finanças", page_icon="💰")
 
-st.text("hello world!")
 
 st.markdown("""
 # Boas vindas!
  
-## Nosso app financeiro
+## Ao app financeiro
 
             
 Espero que você goste.
@@ -34,20 +54,30 @@ if file_upload:
 
     tab_data, tab_history, tab_share = exp2.tabs(["Dados", "Histórico", "Distribuição"])
 
-    with tab_data:
-        st.dataframe(df_instituicao)
+    tab_data.dataframe(df_instituicao)
 
     with tab_history:
         st.line_chart(df_instituicao)
 
     # graficos
     with tab_share:
+        
+        date = st.selectbox("Filtro Data", options=df_instituicao.index)
 
-        date = st.date_input("Data para visualização",
-                             min_value=df_instituicao.index.min(),
-                             max_value=df_instituicao.index.max(),)
+        # date = st.date_input("Data para visualização",
+        #                      min_value=df_instituicao.index.min(),
+        #                      max_value=df_instituicao.index.max(),)
+        
+        # if date not in df_instituicao.index:
+        #     st.warning("Entre com uma data valida")
+        # else:
+        #     st.bar_chart(df_instituicao.loc[date])
 
-        last_dt = df_instituicao.sort_index().iloc[-1]
-        st.bar_chart(last_dt)
+
+        st.bar_chart(df_instituicao.loc[date])
+
+    df_stats = calc_general_stats(df)
+    st.dataframe(df_stats)
+
 
 
